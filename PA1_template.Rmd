@@ -1,25 +1,81 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
+title: 'Reproducible Research: Peer Assessment 1'
+output:
+  word_document: default
   html_document:
-    keep_md: true
+    keep_md: yes
 ---
 
-
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
 ## Loading and preprocessing the data
+```{r}
+library(lattice)
+d <- read.csv("activity.csv")
+d$date <- as.Date(d$date)
+b <-d[complete.cases(d),] #removing NA's
+```
+## Mean total number of steps taken per day
+```{r}
+da<-b[b$interval == 5,"date"] #Extracting the dates
+nosteps<-sapply(b[b$date == da,"steps"], function(x){ sum(x)}) # calculating total number of steps per day
+hist(nosteps,xlab = "No Of Steps",main = "Histogram of the No Of steps" ,col ="red")
+print("The total  number of steps")
+print(nosteps)
+print("The mean")
+print(sapply(b[b$date == da,"steps"], function(x){ mean(x)}))
+print("The median")
+print(sapply(b[b$date == da,"steps"], function(x){ median(x)}))
 
+```
+## The average daily activity pattern
+```{r}
+i<- b[b$date == da[1],"interval"] #extracting the intervals
+intsteps<-sapply(b[b$interval == i,"steps"], function(x){ mean(x)}) #Average No Of steps per interval
+timeseries <- data.frame(intervals = i,avg_steps =as.ts(intsteps)) # data frame for the plot
+ plot(timeseries,type ="l",xlab = "interval",ylab = "Average number of steps",main = "Time series plot") # the plot
+ maxsteps<-sapply(b[b$interval == i,"steps"], function(x){ sum(x)}) # Calculating total number of steps per interval
+ max1<- data.frame(interval = i ,total_steps = maxsteps)
+ print("The interval with maximum number of steps is")
+ max1[max1$total_steps == max(maxsteps),"interval"]
 
-
-## What is mean total number of steps taken per day?
-
-
-
-## What is the average daily activity pattern?
-
-
-
+```
 ## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
+```{r}
+com<-complete.cases(d)
+print("The No Of NA's")
+length(com[com == FALSE])
+meansteps <-sapply(b[b$date == da,"steps"], function(x){ mean(x)}) # calculating mean steps
+dc <- d[!complete.cases(d),]
+mstps <- data.frame(vl = i ,mteps = meansteps)
+for (k in i) {
+  dc[dc$interval == k,"steps"] = mstps[mstps$vl == k,"mteps"] #imputing missing values with mean values
+}
+d[!complete.cases(d),"steps"] <- dc[,"steps"]# transfered to the original data frame
+da<-d[d$interval == 5,"date"] #Extracting the dates
+nosteps<-sapply(d[d$date == da,"steps"], function(x){ sum(x)}) # calculating total number of steps per day
+hist(nosteps,xlab = "No Of Steps",main = "Histogram of the No Of steps" ,col ="red")
+print("The total  number of steps")
+print(nosteps)
+print("The mean")
+print(sapply(d[d$date == da,"steps"], function(x){ mean(x)}))
+print("The median")
+print(sapply(d[d$date == da,"steps"], function(x){ median(x)}))
+```
+## Activity patterns in the weekends and weekdays
+```{r}
+w<-weekdays(d$date)
+w[w == "Saturday"] <-"weekend"
+w[w == "Sunday"] <-"weekend"
+w[!w == "weekend"] <-"weekday"
+w<-factor(w)
+dat<-data.frame(steps=d$steps,date =d$date,interval =d$interval,days =w)#NEW data frame with the weekends and weekdays classification
+weekd<- dat[dat$days=="weekday",]
+weeke<-dat[dat$days=="weekend",]
+wkdsteps<-sapply(weekd[weekd$interval == i,"steps"], function(x){ mean(x)})#mean steps for weekday
+wkesteps<-sapply(weeke[weeke$interval == i,"steps"], function(x){ mean(x)})#mean steps for weekend
+wf <- c(rep("weekday",length(wkdsteps)),rep("weekend",length(wkesteps)))
+wtimes<-data.frame(interval<-d$interval,steps <- as.ts(c(wkdsteps,wkesteps)),days <-factor(wf))
+ xyplot(steps~interval|days,wtimes,type ="l",layout=c(1,2))
+```
